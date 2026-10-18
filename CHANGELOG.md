@@ -13,6 +13,7 @@ All listed versions are **experimental**. Universal compatibility is not guarant
 - Added a quick audio-quality selector to the main and compact players, with the selected profile saved in the browser and applied to browser playback.
 - Added an explicit stop control and translations for the new quality and stop controls.
 - Updated the Portainer and Docker Compose stacks to start Caddy, persist its local CA, and use a LAN-reachable Cast media URL.
+- Made the Portainer Caddy configuration self-contained so deployment does not depend on a separate bind-mounted `Caddyfile`.
 - Added local HTTPS, certificate-trust, Cast, and LAN-only setup instructions to the README.
 - Refreshed frontend asset versions to ensure browsers load the Cast and quality-control updates.
 
