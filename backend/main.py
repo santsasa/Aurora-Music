@@ -34,6 +34,7 @@ DB = DATA / "library.db"
 OWN = os.getenv("OWNTONE_URL", "http://127.0.0.1:3689").rstrip("/")
 USER = os.getenv("APP_USER", "admin")
 PASSWORD = os.getenv("APP_PASSWORD", "")
+AUTH_ENABLED = os.getenv("APP_AUTH_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
 EXTENSIONS = {".mp3", ".flac", ".m4a", ".mp4", ".aac", ".ogg", ".opus", ".wav", ".aiff", ".aif", ".wma"}
 CONTENT_TYPES = {".mp3": "audio/mpeg", ".flac": "audio/flac", ".m4a": "audio/mp4", ".mp4": "audio/mp4", ".aac": "audio/aac", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav", ".aiff": "audio/aiff", ".aif": "audio/aiff"}
 # Browser profiles. 24k Spotify-like is Opus, not an assertion about Spotify's low-tier codec.
@@ -63,7 +64,7 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 
 @app.middleware("http")
 async def require_basic_auth(request: Request, call_next):
-    if request.url.path == "/health" or request.url.path.startswith("/static/"):
+    if not AUTH_ENABLED or request.url.path == "/health" or request.url.path.startswith("/static/"):
         return await call_next(request)
     # Refuse to silently run with an insecure default credential.
     if not PASSWORD or PASSWORD == "CAMBIAR_POR_UNA_CLAVE_LARGA_Y_UNICA":

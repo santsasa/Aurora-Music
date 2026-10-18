@@ -9,7 +9,8 @@ services:
       MUSIC_DIR: /srv/media
       DATA_DIR: /app/data
       APP_USER: ${APP_USER:?Set APP_USER in Portainer}
-      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in Portainer}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      APP_AUTH_ENABLED: ${APP_AUTH_ENABLED:-false}
       APP_PORT: ${APP_PORT:-8787}
       OWNTONE_URL: http://127.0.0.1:3689
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
