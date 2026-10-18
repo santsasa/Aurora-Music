@@ -663,11 +663,6 @@ async def cast_control(action: str):
     return await own_request("PUT", f"/api/player/{action}")
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("APP_PORT", "8787")))
-
-
 # Radio Browser is a public community directory. Never proxy arbitrary station URLs:
 # browsers request public streams directly and the application only stores metadata.
 RADIO_SERVERS = ("https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info")
@@ -806,3 +801,8 @@ def delete_radio_favorite(stationuuid: str):
     with db_conn() as db:
         db.execute("DELETE FROM radio_favorites WHERE stationuuid=?", (stationuuid.lower(),))
     return {"favorite": False}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("APP_PORT", "8787")))

@@ -29,10 +29,20 @@ services:
     network_mode: host
     restart: unless-stopped
     environment:
-      UID: ${PUID:-1000}
-      GID: ${PGID:-1000}
+      UID: 1000
+      GID: 1000
     volumes:
       - aurora_music:/srv/media:ro
+      - aurora_owntone_cache:/var/cache/owntone
+    depends_on:
+      owntone-cache-init:
+        condition: service_completed_successfully
+  owntone-cache-init:
+    image: alpine:3.22
+    container_name: aurora-owntone-cache-init
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /var/cache/owntone && chown -R 1000:1000 /var/cache/owntone"]
+    volumes:
       - aurora_owntone_cache:/var/cache/owntone
 
 volumes:

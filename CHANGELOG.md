@@ -4,6 +4,8 @@ Todas las versiones listadas son **experimentales**. Hasta ejecutar pruebas en h
 
 ## Sin publicar
 
+- Corregido el arranque de la API para que registre también las rutas de radios.
+- La variante de Portainer repara la propiedad de la caché persistente de OwnTone antes de iniciarlo.
 - Interfaz web y conexión Android con selector de español, inglés, portugués, francés, alemán e italiano; preferencia guardada en cada navegador o instalación de la app.
 - Corregido el flujo de Android en GitHub Actions para evitar el paquete SDK retirado `tools`.
 
