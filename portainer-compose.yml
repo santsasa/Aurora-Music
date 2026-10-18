@@ -33,7 +33,7 @@ services:
       GID: 1000
     volumes:
       - aurora_music:/srv/media:ro
-      - aurora_owntone_cache:/var/cache/owntone
+      - aurora_owntone_cache_v2:/var/cache/owntone
     depends_on:
       owntone-cache-init:
         condition: service_completed_successfully
@@ -43,9 +43,9 @@ services:
     restart: "no"
     command: ["sh", "-c", "mkdir -p /var/cache/owntone && chown -R 1000:1000 /var/cache/owntone"]
     volumes:
-      - aurora_owntone_cache:/var/cache/owntone
+      - aurora_owntone_cache_v2:/var/cache/owntone
 
 volumes:
   aurora_music:
   aurora_data:
-  aurora_owntone_cache:
+  aurora_owntone_cache_v2:
