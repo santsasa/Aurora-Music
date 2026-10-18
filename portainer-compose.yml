@@ -12,7 +12,7 @@ services:
       APP_PASSWORD: ${APP_PASSWORD:-}
       APP_AUTH_ENABLED: ${APP_AUTH_ENABLED:-false}
       APP_PORT: ${APP_PORT:-8788}
-      OWNTONE_URL: http://127.0.0.1:3689
+      OWNTONE_URL: http://192.168.1.121:3689
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
       LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3 (+https://github.com/santsasa/Aurora-Music)}
       RADIO_ENABLED: ${RADIO_ENABLED:-true}
