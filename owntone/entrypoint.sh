@@ -10,9 +10,10 @@ rc-service dbus start
 rc-service avahi-daemon start
 rc-service owntone start
 
-# Keep the container alive while OwnTone runs; let Docker restart it if the
-# service exits so Portainer health and restart policies stay meaningful.
-while rc-service owntone status >/dev/null 2>&1; do
-  sleep 5
+# OpenRC's service status command can return non-zero for a daemonized service
+# even after it started successfully. Keep the container alive and let the
+# Docker health check monitor OwnTone's HTTP API instead of restarting it in a
+# tight loop based on OpenRC's status code.
+while :; do
+  sleep 3600
 done
-exit 1
