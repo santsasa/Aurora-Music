@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12131b"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>Aurora Music</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-theme="glass">
+<div class="ambient ambient-1"></div><div class="ambient ambient-2"></div>
+<div class="app-shell">
+  <aside class="sidebar panel">
+    <div class="brand"><div class="brandmark">◉</div><div><strong>Aurora</strong><small>MUSIC SERVER</small></div></div>
+    <div class="side-label">EXPLORAR</div>
+    <nav id="nav">
+      <button data-view="home" class="nav-btn active">⌂ <span>Inicio</span></button>
+      <button data-view="all" class="nav-btn">▤ <span>Biblioteca</span></button>
+      <button data-view="radio" class="nav-btn">◉ <span>Radios online</span></button>
+      <button data-view="favorites" class="nav-btn">♡ <span>Favoritas</span></button>
+      <button data-view="recent" class="nav-btn">◷ <span>Escuchadas</span></button>
+      <button data-view="playlists" class="nav-btn">☷ <span>Playlists</span></button>
+    </nav>
+    <div class="side-label top-gap">CONFIGURACIÓN</div>
+    <nav><button data-view="settings" class="nav-btn">⚙ <span>Ajustes</span></button></nav>
+    <div class="side-footer"><span class="status-dot"></span> Tu biblioteca privada<br><small>Raspberry Pi · OwnTone</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar panel">
+      <button class="mobile-brand" id="menuBtn" aria-label="Menú">☰</button>
+      <div class="search-wrap">⌕ <input id="search" type="search" placeholder="Buscar canciones, artistas, álbumes…" aria-label="Buscar música"></div>
+      <div class="top-actions"><button id="rescan" class="icon-btn" title="Actualizar biblioteca">⟳</button><button id="themeBtn" class="icon-btn" title="Cambiar apariencia">◐</button><span class="avatar">A</span></div>
+    </header>
+    <div class="content" id="content">
+      <div class="loading">Cargando tu biblioteca…</div>
+    </div>
+  </main>
+  <aside class="right-rail panel" id="rightRail">
+    <div class="rail-title"><b>Reproduciendo</b><button class="icon-btn" id="closeRail">×</button></div>
+    <div id="railArt" class="big-art art-placeholder">♫</div>
+    <h3 id="railTitle">Nada sonando</h3><p class="muted" id="railArtist">Elegí una canción para empezar</p>
+    <div class="rail-tabs"><button class="tab active" data-tab="queue">Cola</button><button class="tab" data-tab="lyrics">Letra</button><button class="tab" data-tab="devices">Dispositivos</button></div>
+    <div id="railBody" class="rail-body"><div class="muted">Tu cola está vacía.</div></div>
+  </aside>
+</div>
+<div class="player panel" id="player">
+  <div class="player-track">
+    <div id="playerArt" class="mini-art art-placeholder">♫</div>
+    <div class="ellipsis"><b id="playerTitle">Biblioteca lista</b><small id="playerArtist">Agregá música para comenzar</small></div>
+    <button id="heartBtn" class="icon-btn" title="Favoritos">♡</button>
+  </div>
+  <div class="play-area">
+    <div class="controls"><button id="shuffle" class="icon-btn" title="Aleatorio">⇄</button><button id="prev" class="icon-btn" title="Anterior">|◀</button><button id="play" class="play-btn" title="Reproducir">▶</button><button id="next" class="icon-btn" title="Siguiente">▶|</button><button id="repeat" class="icon-btn" title="Repetir">↻</button></div>
+    <div class="progress"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="100" value="0" aria-label="Progreso"><span id="duration">0:00</span></div>
+  </div>
+  <div class="player-actions">
+    <button id="sleepBtn" class="icon-btn" title="Temporizador">☾</button>
+    <button id="eqBtn" class="icon-btn" title="Ecualizador">≋</button>
+    <button id="devicesBtn" class="icon-btn" title="AirPlay / Chromecast">▣</button>
+    <button id="queueBtn" class="icon-btn" title="Cola y letras">☷</button>
+    <span class="volume-icon">♫</span><input id="volume" aria-label="Volumen" type="range" min="0" max="100" value="80">
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal-backdrop" hidden><div class="modal-card panel"><button id="modalClose" class="icon-btn modal-close">×</button><div id="modalContent"></div></div></div>
+<audio id="audio" preload="none"></audio>
+<audio id="radioAudio" preload="none"></audio>
+<script src="/static/app.js" defer></script>
+</body></html>
