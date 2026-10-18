@@ -1,0 +1,40 @@
+services:
+  aurora:
+    build: ./backend
+    pull_policy: build
+    container_name: aurora-music
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      MUSIC_DIR: /srv/media
+      DATA_DIR: /app/data
+      APP_USER: ${APP_USER:?Set APP_USER in Portainer}
+      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in Portainer}
+      APP_PORT: ${APP_PORT:-8787}
+      OWNTONE_URL: http://127.0.0.1:3689
+      LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
+      LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3 (+https://github.com/santsasa/Aurora-Music)}
+      RADIO_ENABLED: ${RADIO_ENABLED:-true}
+      RADIO_USER_AGENT: ${RADIO_USER_AGENT:-AuroraMusic/0.3 (self-hosted radio directory)}
+    volumes:
+      - aurora_music:/srv/media:ro
+      - aurora_data:/app/data
+    depends_on:
+      - owntone
+  owntone:
+    build: ./owntone
+    pull_policy: build
+    container_name: aurora-owntone
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      UID: ${PUID:-1000}
+      GID: ${PGID:-1000}
+    volumes:
+      - aurora_music:/srv/media:ro
+      - aurora_owntone_cache:/var/cache/owntone
+
+volumes:
+  aurora_music:
+  aurora_data:
+  aurora_owntone_cache:
