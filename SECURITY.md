@@ -1,6 +1,6 @@
 # Security
 
-Aurora Music 0.3.1 is an experimental application intended **only for a private LAN**.
+Aurora Music 0.3.2 is an experimental application intended **only for a private LAN**.
 
 - Do not expose container ports to the Internet. HTTP Basic authentication does not encrypt credentials without HTTPS.
 - Choose a long, unique password in `.env`. Do not attach `.env`, `data/library.db`, or logs that expose tokens to issues.

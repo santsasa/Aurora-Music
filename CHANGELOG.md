@@ -2,6 +2,12 @@
 
 All listed versions are **experimental**. Universal compatibility is not guaranteed until tested on real hardware.
 
+## [0.3.2] — 2026-10-18 (Hotfix)
+
+- Recover direct Chromecast playback when a previous connection worker has stopped instead of trying to restart a finished thread.
+- Serialize direct Chromecast playback and control commands to prevent overlapping operations on the same receiver.
+- Serialize device discovery so concurrent requests cannot replace the active discovery state.
+
 ## [0.3.1] — 2026-10-18 (Hotfix)
 
 - Added a direct Chromecast playback option that streams FLAC through the Cast Default Media Receiver; OwnTone's Opus route remains available as a fallback.

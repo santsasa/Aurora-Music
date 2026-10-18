@@ -2,7 +2,7 @@
 
 Self-hosted music server for Raspberry Pi 5 with a web player, experimental Android client, online radio, Chromecast/AirPlay output and on-demand transcoding. Servidor de música autoalojado para Raspberry Pi 5 con reproductor web, cliente Android experimental, radios online, Chromecast/AirPlay y conversión bajo demanda.
 
-Versión experimental 0.3.1 (hotfix), basada en el MVP original, inspirada en la navegación de SimpMusic y en dos lenguajes visuales: **Liquid Glass** (inspiración Apple Music) y **Material 3** (inspiración Google). No es una copia de sus diseños, marcas ni aplicaciones.
+Versión experimental 0.3.2 (hotfix), basada en el MVP original, inspirada en la navegación de SimpMusic y en dos lenguajes visuales: **Liquid Glass** (inspiración Apple Music) y **Material 3** (inspiración Google). No es una copia de sus diseños, marcas ni aplicaciones.
 
 ## Funciones incluidas
 
@@ -152,7 +152,7 @@ node --check backend/static/app.js
 - `docker-compose.yml`: dos servicios con `network_mode: host` para descubrimiento por mDNS.
 - `music/`: carpeta opcional para música; no incluida en el ZIP.
 
-Versión **0.3.1 / hotfix experimental**. API y pantalla probadas localmente; instalación real ARM64 y emparejamiento de receptores **pendientes de verificar en una Raspberry Pi 5**.
+Versión **0.3.2 / hotfix experimental**. API y pantalla probadas localmente; Chromecast directo depende del alcance de red y compatibilidad del receptor.
 
 ## Radios online por país
 
@@ -210,7 +210,7 @@ aurora-music/
 cd aurora-music
 git init
 git add .
-git commit -m "Aurora Music v0.3.1: hotfix"
+git commit -m "Aurora Music v0.3.2: Chromecast recovery hotfix"
 # Requiere haber iniciado sesión: gh auth login
 gh repo create aurora-music --public --source=. --remote=origin --push
 ```
