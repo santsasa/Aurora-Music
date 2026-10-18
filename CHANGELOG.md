@@ -2,7 +2,7 @@
 
 All listed versions are **experimental**. Universal compatibility is not guaranteed until tested on real hardware.
 
-## [Unreleased]
+## [0.3.3] — 2026-10-18 (Hotfix)
 
 - Added the official Google Cast Web Sender SDK and a trusted local HTTPS entry point through Caddy for the Raspberry Pi LAN address.
 - Added persistent Caddy certificate storage and a LAN endpoint to download the local root certificate required by browsers that control Cast.

@@ -16,9 +16,9 @@ services:
       OWNTONE_URL: ${OWNTONE_URL:-http://127.0.0.1:3689}
       CAST_STREAM_BASE_URL: ${CAST_STREAM_BASE_URL:-http://192.168.1.121:8788}
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
-      LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3.2 (+https://github.com/santsasa/Aurora-Music)}
+      LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3.3 (+https://github.com/santsasa/Aurora-Music)}
       RADIO_ENABLED: ${RADIO_ENABLED:-true}
-      RADIO_USER_AGENT: ${RADIO_USER_AGENT:-AuroraMusic/0.3.2 (self-hosted radio directory)}
+      RADIO_USER_AGENT: ${RADIO_USER_AGENT:-AuroraMusic/0.3.3 (self-hosted radio directory)}
     volumes:
       - aurora_music:/srv/media:ro
       - aurora_data:/app/data

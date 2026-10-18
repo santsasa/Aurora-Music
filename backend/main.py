@@ -58,13 +58,13 @@ PROFILES = {
 }
 LYRICS_API = "https://lrclib.net"
 LYRICS_ENABLED = os.getenv("LYRICS_ONLINE_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
-LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3.2 (+https://github.com/santsasa/Aurora-Music)")
+LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3.3 (+https://github.com/santsasa/Aurora-Music)")
 LYRICS_TTL_SUCCESS = 90 * 86400
 LYRICS_TTL_MISS = 24 * 3600
 LYRICS_MAX_BODY = 250_000
 lyric_request_lock = asyncio.Lock()
 lyrics_cooldown_until = 0.0
-app = FastAPI(title="Aurora Music", version="0.3.2", docs_url=None, redoc_url=None)
+app = FastAPI(title="Aurora Music", version="0.3.3", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 
 
@@ -981,7 +981,7 @@ async def cast_control(action: str):
 # browsers request public streams directly and the application only stores metadata.
 RADIO_SERVERS = ("https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info")
 RADIO_ENABLED = os.getenv("RADIO_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
-RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3.2 (self-hosted radio directory)")
+RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3.3 (self-hosted radio directory)")
 _radio_cache: dict[str, tuple[float, list]] = {}
 
 
