@@ -38,16 +38,21 @@
     <div class="rail-title"><b>Reproduciendo</b><button class="icon-btn" id="closeRail">×</button></div>
     <div id="railArt" class="big-art art-placeholder">♫</div>
     <h3 id="railTitle">Nada sonando</h3><p class="muted" id="railArtist">Elegí una canción para empezar</p>
+    <div class="mobile-now-controls" aria-label="Controles de reproducción">
+      <div class="controls"><button class="icon-btn" data-mobile-action="prev" aria-label="Anterior">|◀</button><button class="play-btn" data-mobile-action="play" aria-label="Reproducir o pausar">▶</button><button class="icon-btn" data-mobile-action="next" aria-label="Siguiente">▶|</button></div>
+      <div class="progress"><span id="mobileElapsed">0:00</span><input id="mobileSeek" type="range" min="0" max="100" value="0" aria-label="Progreso"><span id="mobileDuration">0:00</span></div>
+    </div>
     <div class="rail-tabs"><button class="tab active" data-tab="queue">Cola</button><button class="tab" data-tab="lyrics">Letra</button><button class="tab" data-tab="devices">Dispositivos</button></div>
     <div id="railBody" class="rail-body"><div class="muted">Tu cola está vacía.</div></div>
   </aside>
 </div>
 <div class="player panel" id="player">
-  <div class="player-track">
+  <div class="player-track" id="playerTrack" aria-label="Abrir reproductor">
     <div id="playerArt" class="mini-art art-placeholder">♫</div>
     <div class="ellipsis"><b id="playerTitle">Biblioteca lista</b><small id="playerArtist">Agregá música para comenzar</small></div>
     <button id="heartBtn" class="icon-btn" title="Favoritos">♡</button>
   </div>
+  <button class="mini-play" data-mobile-action="play" aria-label="Reproducir o pausar">▶</button>
   <div class="play-area">
     <div class="controls"><button id="shuffle" class="icon-btn" title="Aleatorio">⇄</button><button id="prev" class="icon-btn" title="Anterior">|◀</button><button id="play" class="play-btn" title="Reproducir">▶</button><button id="next" class="icon-btn" title="Siguiente">▶|</button><button id="repeat" class="icon-btn" title="Repetir">↻</button></div>
     <div class="progress"><span id="elapsed">0:00</span><input id="seek" type="range" min="0" max="100" value="0" aria-label="Progreso"><span id="duration">0:00</span></div>

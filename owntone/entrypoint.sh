@@ -8,4 +8,5 @@ mkdir -p /run/dbus /run/avahi-daemon
 dbus-daemon --system --fork --nopidfile --syslog-only
 avahi-daemon --daemonize --no-chroot
 
-exec su owntone -s /bin/ash -c 'exec /usr/sbin/owntone -f -c /etc/owntone/owntone.conf'
+exec su-exec "${UID:-1000}:${GID:-1000}" \
+  /usr/sbin/owntone -f -c /etc/owntone/owntone.conf
