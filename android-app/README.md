@@ -1,6 +1,6 @@
 # Aurora Music para Android (cliente experimental)
 
-App Android que se conecta a la web del **servidor Aurora Music v0.3.1** en Raspberry Pi 5.
+App Android que se conecta a la web del **servidor Aurora Music v0.3.2** en Raspberry Pi 5.
 No instala el servidor en el teléfono ni descarga toda la música: reproduce la biblioteca y radios desde tu servidor o sus fuentes públicas.
 
 ## Qué funciona
