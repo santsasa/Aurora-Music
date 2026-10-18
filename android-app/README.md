@@ -9,6 +9,7 @@ No instala el servidor en el teléfono ni descarga toda la música: reproduce la
 - Inicio de sesión HTTP Basic compatible con el servidor de Aurora (solicita usuario y contraseña en pantalla).
 - Biblioteca local, búsqueda, reproducción, letras, playlists, ajustes y radios online usando la misma web responsiva del servidor.
 - Selector Liquid Glass / Material 3 disponible en Ajustes web.
+- Selector de idioma en la pantalla de conexión y en los Ajustes web: español, inglés, portugués, francés, alemán e italiano. La elección se guarda en las preferencias de la app y en el almacenamiento local de WebView; no se envía al servidor.
 - Controles de Chromecast y AirPlay vía API del servidor OwnTone, sujetos a las limitaciones del servidor y hardware.
 - Guardado de la URL de conexión; **la app no guarda usuario ni contraseña en SharedPreferences**.
 

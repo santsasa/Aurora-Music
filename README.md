@@ -1,10 +1,13 @@
 # Aurora Music — Servidor de música para Raspberry Pi 5
 
+Self-hosted music server for Raspberry Pi 5 with a web player, experimental Android client, online radio, Chromecast/AirPlay output and on-demand transcoding. Servidor de música autoalojado para Raspberry Pi 5 con reproductor web, cliente Android experimental, radios online, Chromecast/AirPlay y conversión bajo demanda.
+
 Versión experimental 0.3.0 (MVP) original, inspirada en la navegación de SimpMusic y en dos lenguajes visuales: **Liquid Glass** (inspiración Apple Music) y **Material 3** (inspiración Google). No es una copia de sus diseños, marcas ni aplicaciones.
 
 ## Funciones incluidas
 
 - Interfaz web responsive para móvil, tablet y PC; temas Liquid Glass / Material 3.
+- Interfaz en español, inglés, portugués, francés, alemán e italiano. El idioma elegido se guarda en el navegador o en la app Android.
 - **Radios online** en una sección independiente, búsqueda por país, selección de país predeterminado en Ajustes, favoritos y reproducción directa desde el navegador, usando el directorio abierto Radio Browser.
 - **Proyecto de app Android** conectado al servidor (`android-app/`), para compilar como APK mediante GitHub Actions o Android Studio.
 - Biblioteca local en Raspberry Pi 5 o montada desde un NAS; escaneo de tags y carátulas embebidas.
@@ -51,6 +54,12 @@ sudo docker compose logs -f --tail=100
 7. Desde otro dispositivo en **la misma red** abrí `http://IP_DE_LA_RPI:8787` e ingresá el usuario/contraseña del `.env`.
 8. Copiá canciones dentro de la carpeta `music/` o del NAS y usá el botón `⟳` para escanear. OwnTone puede tardar unos segundos más en indexarlas para reproducirlas en parlantes.
 9. Para AirPlay/Chromecast, hacé clic en `▣` (barra inferior), seleccioná el receptor y reproducí una canción. En caso de que se requiera PIN de AirPlay, completá el emparejamiento desde la interfaz OwnTone `http://IP_DE_LA_RPI:3689`.
+
+### Portainer / Portainer
+
+**Español:** En **Stacks → Add stack → Git repository**, usá `https://github.com/santsasa/Aurora-Music`, rama `main` y Compose path `docker-compose.yml`. Elegí el entorno Docker **local** de la Raspberry y activá **Enable relative path volumes** para que `data`, `owntone`, `owntone-cache` y `music` permanezcan vinculados a rutas persistentes. Agregá las variables `APP_USER`, `APP_PASSWORD` (larga y única), `MUSIC_PATH` (ruta absoluta de tu biblioteca, de solo lectura), `PUID` y `PGID`; podés usar [.env.example](.env.example) como referencia, pero no subas un `.env` con contraseñas al repositorio. Comprobá que los puertos 8787 y 3689 estén libres y después pulsá **Deploy the stack**. El primer despliegue compila la imagen Aurora en la Pi. Para actualizar, usá **Pull and redeploy** y verificá los logs y que los volúmenes conserven sus datos. Si Portainer administra un Docker remoto, construí la imagen en el host o en CI y referenciala con `image:`: Portainer documenta una limitación para `build:` en entornos remotos.
+
+**English:** In **Stacks → Add stack → Git repository**, use `https://github.com/santsasa/Aurora-Music`, branch `main`, and Compose path `docker-compose.yml`. Select the Raspberry Pi's **local** Docker environment and enable **relative path volumes** so `data`, `owntone`, `owntone-cache`, and `music` persist. Set `APP_USER`, a strong unique `APP_PASSWORD`, an absolute read-only library path in `MUSIC_PATH`, and `PUID`/`PGID`. Use [.env.example](.env.example) as a reference; never commit real credentials. Confirm ports 8787 and 3689 are free, then deploy. The first deployment builds Aurora on the Pi. On updates, use **Pull and redeploy**, check the logs, and confirm the data volumes remain mounted. For a remote Docker environment, build Aurora outside Portainer and reference the resulting image with `image:` because remote Compose builds are currently limited.
 
 ### Si ya tenés OwnTone instalado
 

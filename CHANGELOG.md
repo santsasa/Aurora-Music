@@ -2,6 +2,11 @@
 
 Todas las versiones listadas son **experimentales**. Hasta ejecutar pruebas en hardware real, no se garantiza compatibilidad universal.
 
+## Sin publicar
+
+- Interfaz web y conexión Android con selector de español, inglés, portugués, francés, alemán e italiano; preferencia guardada en cada navegador o instalación de la app.
+- Corregido el flujo de Android en GitHub Actions para evitar el paquete SDK retirado `tools`.
+
 ## [0.3.0] — 2026-10-18
 
 ### Añadido
@@ -16,7 +21,7 @@ Todas las versiones listadas son **experimentales**. Hasta ejecutar pruebas en h
 ### Limitaciones
 - El streaming de radios es desde el navegador, no se retransmite ni transcodifica automáticamente desde la Raspberry.
 - El control de radios a Chromecast/AirPlay aún no está implementado.
-- El APK no ha sido compilado ni validado en un teléfono real. El código Android se entrega para compilación.
+- El APK debug se compila en GitHub Actions, pero no se ha validado en un teléfono real.
 - El cliente Android no garantiza reproducción en segundo plano ni Android Auto.
 
 ## [0.2.0] — 2026-10-18
