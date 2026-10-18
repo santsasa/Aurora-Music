@@ -60,9 +60,9 @@
   <div class="player-actions">
     <button id="sleepBtn" class="icon-btn" title="Temporizador">☾</button>
     <button id="eqBtn" class="icon-btn" title="Ecualizador">≋</button>
-    <button id="devicesBtn" class="icon-btn" title="AirPlay / Chromecast">▣</button>
+    <button id="devicesBtn" class="icon-btn" title="AirPlay / Chromecast" aria-label="Parlantes"><svg class="speaker-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05a4.5 4.5 0 0 0 2.5-4.02zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg></button>
     <button id="queueBtn" class="icon-btn" title="Cola y letras">☷</button>
-    <span class="volume-icon">♫</span><input id="volume" aria-label="Volumen" type="range" min="0" max="100" value="80">
+    <svg class="volume-icon speaker-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05a4.5 4.5 0 0 0 2.5-4.02zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg><input id="volume" aria-label="Volumen" type="range" min="0" max="100" value="100">
   </div>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>

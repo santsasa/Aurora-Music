@@ -48,10 +48,67 @@ def test_scan_stream_lyrics(client):
     assert len(data['items'])==1
     item=data['items'][0]
     assert item['title']=='Prueba'
+    assert item['format']=='WAV'
+    assert item['bit_depth']==16
+    assert item['sample_rate']==8000
     assert c.get(f"/api/stream/{item['id']}",headers=headers).status_code==200
     assert c.get(f"/api/lyrics/{item['id']}",headers=headers).json()['lines'][0]['text']=='Hola'
     assert c.get('/api/stream/nonexistent',headers=headers).status_code==404
     assert c.get(f"/api/stream/{item['id']}?profile=unknown",headers=headers).status_code==400
+
+
+def test_cast_stream_requires_signed_short_lived_link(client):
+    c, headers, module=client
+    expires=int(module.time.time())+600
+    unknown='missing-track'
+    signature=module.cast_stream_signature(unknown,expires)
+    assert c.get(f"/api/cast-stream/{unknown}?expires={expires}&signature={signature}").status_code==404
+    assert c.get(f"/api/cast-stream/{unknown}?expires={expires}&signature=invalid").status_code==403
+    expired=int(module.time.time())-1
+    assert c.get(f"/api/cast-stream/{unknown}?expires={expired}&signature={module.cast_stream_signature(unknown,expired)}").status_code==403
+
+
+def test_chromecast_direct_uses_flac_receiver(client, monkeypatch):
+    c, headers, module=client
+    item=c.get('/api/library',headers=headers).json()['items'][0]
+    calls=[]
+
+    class MediaStatus:
+        player_state='PLAYING'
+
+    class MediaController:
+        status=MediaStatus()
+        def play_media(self, url, content_type, **kwargs):
+            calls.append((url, content_type, kwargs))
+        def block_until_active(self, timeout):
+            calls.append(('active', timeout))
+        def pause(self):
+            calls.append(('pause',))
+        def play(self):
+            calls.append(('play',))
+        def stop(self):
+            calls.append(('stop',))
+
+    class Device:
+        name='Test Chromecast'
+        model_name='Test model'
+        uuid='cast-test-uuid'
+        media_controller=MediaController()
+        def wait(self, timeout):
+            calls.append(('wait', timeout))
+
+    device=Device()
+    def fake_discovery():
+        module.cast_devices={device.uuid:device}
+        return [{'id':device.uuid,'name':device.name,'model':device.model_name}]
+    monkeypatch.setattr(module,'discover_direct_casts',fake_discovery)
+    assert c.get('/api/chromecast/outputs',headers=headers).json()['outputs'][0]['name']=='Test Chromecast'
+    assert c.post('/api/chromecast/select',headers=headers,json={'uuid':device.uuid}).status_code==200
+    response=c.post(f"/api/chromecast/play/{item['id']}",headers=headers)
+    assert response.status_code==200
+    assert response.json()['format']=='FLAC'
+    assert any(call[1:2]==('audio/flac',) for call in calls if len(call)>1)
+    assert c.post('/api/chromecast/control/pause',headers=headers).status_code==200
 
 
 def test_favorites_playlist_and_recent(client):

@@ -33,6 +33,8 @@ nav { display:grid; gap:4px; }.nav-btn { border:0; background:none; color:var(--
 .full-cover { height:100%; width:100%; object-fit:cover; display:block; }
 .album-img { height:100%; width:100%; object-fit:cover; display:block; }
 .device-item.active { color:var(--accent); background:var(--surface-hover); }
+.speaker-icon { width:19px; height:19px; fill:currentColor; display:block; flex:0 0 auto; }
+.volume-icon { width:18px; height:18px; }
 
 /* Mobile layout refinements: keep every page and the fixed player inside the viewport. */
 @media(max-width:760px) {

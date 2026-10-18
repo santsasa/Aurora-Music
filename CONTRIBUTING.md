@@ -1,10 +1,10 @@
-# Colaborar con Aurora Music
+# Contributing to Aurora Music
 
-¡Gracias por contribuir!
+Thanks for contributing!
 
-- Abrí un issue describiendo el error o la propuesta, junto con los pasos para reproducirlo. No compartas IP privadas de tu red ni credenciales.
-- Antes de enviar cambios: `python -m pytest tests -q` y `node --check backend/static/app.js`.
-- Prepará pull requests pequeños con una explicación y pruebas cuando sea posible.
-- No adjuntes música comercial, letras, imágenes de álbumes, tokens, contraseñas ni grabaciones sin autorización.
-- Respetá las licencias de FFmpeg, OwnTone y de cualquier código externo que quieras incorporar.
-- La compatibilidad Chromecast y AirPlay debe verificarse con dispositivos reales; documentá modelos y versiones.
+- Open an issue describing the bug or proposal, including steps to reproduce it. Do not share private network IP addresses or credentials.
+- Before submitting changes, run `python -m pytest tests -q` and `node --check backend/static/app.js`.
+- Keep pull requests small and include an explanation and tests when possible.
+- Do not attach commercial music, lyrics, album artwork, tokens, passwords, or recordings unless you are authorized to share them.
+- Follow the licenses for FFmpeg, OwnTone, and any external code you want to include.
+- Verify Chromecast and AirPlay compatibility with real devices; document device models and software versions.

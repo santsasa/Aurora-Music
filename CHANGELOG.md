@@ -1,40 +1,46 @@
-# Changelog de Aurora Music
+# Aurora Music Changelog
 
-Todas las versiones listadas son **experimentales**. Hasta ejecutar pruebas en hardware real, no se garantiza compatibilidad universal.
+All listed versions are **experimental**. Universal compatibility is not guaranteed until tested on real hardware.
 
-## Sin publicar
+## [0.3.1] — 2026-10-18 (Hotfix)
 
-- Corregido el arranque de la API para que registre también las rutas de radios.
-- La variante de Portainer repara la propiedad de la caché persistente de OwnTone antes de iniciarlo.
-- Interfaz web y conexión Android con selector de español, inglés, portugués, francés, alemán e italiano; preferencia guardada en cada navegador o instalación de la app.
-- Corregido el flujo de Android en GitHub Actions para evitar el paquete SDK retirado `tools`.
+- Added a direct Chromecast playback option that streams FLAC through the Cast Default Media Receiver; OwnTone's Opus route remains available as a fallback.
+- Added direct Chromecast and OwnTone radio playback, plus live format, bitrate, source bit depth, and sample-rate details in the player.
+- Added a periodic short stream sample so radio playback can show observed source throughput separately from the directory's advertised bitrate.
+- Replaced the player device glyph with a speaker icon and made browser volume default to 100%, saved per browser.
+- Fixed API startup so radio routes are registered.
+- The Portainer variant now repairs ownership of OwnTone's persistent cache before starting it.
+- Added web interface and Android connection language selectors for Spanish, English, Portuguese, French, German, and Italian; the preference is saved in each browser or app installation.
+- Fixed the Android GitHub Actions workflow to avoid using the retired `tools` SDK package.
 
 ## [0.3.0] — 2026-10-18
 
-### Añadido
-- Sección independiente **Radios online** y selección de país (en Ajustes o la pestaña Radios).
-- Integración con el directorio comunitario **Radio Browser**, buscador de estaciones por nombre y país.
-- Favoritos de radios persistentes en SQLite, y reproducción directa desde el navegador.
-- Caché del directorio y filtro de URLs de estación para evitar destinos locales en los metadatos.
-- **Proyecto cliente Android** bajo `android-app/`, con WebView y pantalla de conexión al servidor.
-- Flujo de compilación de APK debug en GitHub Actions (`.github/workflows/android-apk.yml`).
-- Tests de países, favoritos, autenticación y validación de URLs de radios.
+### Added
 
-### Limitaciones
-- El streaming de radios es desde el navegador, no se retransmite ni transcodifica automáticamente desde la Raspberry.
-- El control de radios a Chromecast/AirPlay aún no está implementado.
-- El APK debug se compila en GitHub Actions, pero no se ha validado en un teléfono real.
-- El cliente Android no garantiza reproducción en segundo plano ni Android Auto.
+- Separate **Online Radio** section and country selection (in Settings or the Radio tab).
+- Integration with the community **Radio Browser** directory, with station search by name and country.
+- Persistent radio favorites in SQLite and direct playback in the browser.
+- Directory caching and station URL filtering to prevent local destinations in metadata.
+- **Android client project** under `android-app/`, with a WebView and server connection screen.
+- Debug APK build workflow in GitHub Actions (`.github/workflows/android-apk.yml`).
+- Tests for countries, favorites, authentication, and radio URL validation.
+
+### Limitations
+
+- Radio streams play in the browser; they are not relayed or automatically transcoded by the Raspberry Pi.
+- Radio control to Chromecast/AirPlay is not yet implemented.
+- The debug APK builds in GitHub Actions but has not been validated on a real phone.
+- The Android client does not guarantee background playback or Android Auto support.
 
 ## [0.2.0] — 2026-10-18
 
-- Búsqueda de letras sincronizadas mediante LRCLIB, caché y selector de variantes.
-- Prioridad de letras `.lrc` locales; API de selección de coincidencias.
-- Configuración de privacidad para letras online.
+- Synchronized lyrics search through LRCLIB, with caching and a variant selector.
+- Priority for local `.lrc` lyrics and an API for selecting matches.
+- Privacy settings for online lyrics.
 
 ## [0.1.0] — 2026-10-18
 
-- Primera versión con biblioteca local, reproducción web, playlists, favoritos y escaneo.
-- Transcodificación bajo demanda mediante FFmpeg.
-- Interfaz Liquid Glass / Material 3, cola, EQ básico y temporizador.
-- Integración inicial con OwnTone para AirPlay y Chromecast (pendiente de validar con hardware real).
+- First version with a local library, web playback, playlists, favorites, and scanning.
+- On-demand transcoding through FFmpeg.
+- Liquid Glass / Material 3 interface, queue, basic equalizer, and sleep timer.
+- Initial OwnTone integration for AirPlay and Chromecast (pending validation on real hardware).

@@ -11,10 +11,11 @@ services:
       APP_PASSWORD: ${APP_PASSWORD:?Configurá APP_PASSWORD en .env}
       APP_PORT: ${APP_PORT:-8787}
       OWNTONE_URL: http://127.0.0.1:3689
+      CAST_STREAM_BASE_URL: ${CAST_STREAM_BASE_URL:-}
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
-      LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3 (+https://github.com/topics/music-server)}
+      LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3.1 (+https://github.com/santsasa/Aurora-Music)}
       RADIO_ENABLED: ${RADIO_ENABLED:-true}
-      RADIO_USER_AGENT: ${RADIO_USER_AGENT:-AuroraMusic/0.3 (self-hosted radio directory)}
+      RADIO_USER_AGENT: ${RADIO_USER_AGENT:-AuroraMusic/0.3.1 (self-hosted radio directory)}
     volumes:
       - ${MUSIC_PATH:-./music}:/srv/media:ro
       - ./data:/app/data

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -26,6 +27,7 @@ from mutagen.flac import FLAC
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 BASE = Path(__file__).resolve().parent
 MUSIC = Path(os.getenv("MUSIC_DIR", str(BASE.parent / "music"))).resolve()
@@ -35,6 +37,8 @@ OWN = os.getenv("OWNTONE_URL", "http://127.0.0.1:3689").rstrip("/")
 USER = os.getenv("APP_USER", "admin")
 PASSWORD = os.getenv("APP_PASSWORD", "")
 AUTH_ENABLED = os.getenv("APP_AUTH_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
+CAST_STREAM_BASE_URL = os.getenv("CAST_STREAM_BASE_URL", "").rstrip("/")
+CAST_STREAM_SECRET = secrets.token_bytes(32)
 EXTENSIONS = {".mp3", ".flac", ".m4a", ".mp4", ".aac", ".ogg", ".opus", ".wav", ".aiff", ".aif", ".wma"}
 CONTENT_TYPES = {".mp3": "audio/mpeg", ".flac": "audio/flac", ".m4a": "audio/mp4", ".mp4": "audio/mp4", ".aac": "audio/aac", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav", ".aiff": "audio/aiff", ".aif": "audio/aiff"}
 # Browser profiles. 24k Spotify-like is Opus, not an assertion about Spotify's low-tier codec.
@@ -52,19 +56,19 @@ PROFILES = {
 }
 LYRICS_API = "https://lrclib.net"
 LYRICS_ENABLED = os.getenv("LYRICS_ONLINE_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
-LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3 (+https://github.com/topics/music-server)")
+LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3.1 (+https://github.com/santsasa/Aurora-Music)")
 LYRICS_TTL_SUCCESS = 90 * 86400
 LYRICS_TTL_MISS = 24 * 3600
 LYRICS_MAX_BODY = 250_000
 lyric_request_lock = asyncio.Lock()
 lyrics_cooldown_until = 0.0
-app = FastAPI(title="Aurora Music", version="0.3.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="Aurora Music", version="0.3.1", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 
 
 @app.middleware("http")
 async def require_basic_auth(request: Request, call_next):
-    if not AUTH_ENABLED or request.url.path == "/health" or request.url.path.startswith("/static/"):
+    if not AUTH_ENABLED or request.url.path == "/health" or request.url.path.startswith("/static/") or request.url.path.startswith("/api/cast-stream/"):
         return await call_next(request)
     # Refuse to silently run with an insecure default credential.
     if not PASSWORD or PASSWORD == "CAMBIAR_POR_UNA_CLAVE_LARGA_Y_UNICA":
@@ -106,7 +110,9 @@ def init_db():
             id TEXT PRIMARY KEY, rel TEXT NOT NULL UNIQUE, title TEXT NOT NULL,
             artist TEXT NOT NULL, album TEXT NOT NULL, genre TEXT NOT NULL,
             duration REAL NOT NULL DEFAULT 0, track_no INTEGER NOT NULL DEFAULT 0,
-            mtime_ns INTEGER NOT NULL, size INTEGER NOT NULL
+            mtime_ns INTEGER NOT NULL, size INTEGER NOT NULL,
+            format TEXT NOT NULL DEFAULT '', bitrate INTEGER NOT NULL DEFAULT 0,
+            sample_rate INTEGER NOT NULL DEFAULT 0, bit_depth INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS favorites(track_id TEXT PRIMARY KEY);
         CREATE TABLE IF NOT EXISTS playlists(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL);
@@ -125,6 +131,10 @@ def init_db():
             fetched_at INTEGER NOT NULL
         );
         """)
+        columns = {row[1] for row in db.execute("PRAGMA table_info(tracks)")}
+        for column, declaration in (("format", "TEXT NOT NULL DEFAULT ''"), ("bitrate", "INTEGER NOT NULL DEFAULT 0"), ("sample_rate", "INTEGER NOT NULL DEFAULT 0"), ("bit_depth", "INTEGER NOT NULL DEFAULT 0")):
+            if column not in columns:
+                db.execute(f"ALTER TABLE tracks ADD COLUMN {column} {declaration}")
 
 
 def tag_first(tags, keys, fallback):
@@ -165,8 +175,8 @@ def scan_library():
                     stat = path.stat()
                     ident = hashlib.sha256(rel.encode("utf-8")).hexdigest()[:24]
                     seen.add(ident)
-                    record = db.execute("SELECT mtime_ns,size FROM tracks WHERE id=?", (ident,)).fetchone()
-                    if record and record[0] == stat.st_mtime_ns and record[1] == stat.st_size:
+                    record = db.execute("SELECT mtime_ns,size,format FROM tracks WHERE id=?", (ident,)).fetchone()
+                    if record and record[0] == stat.st_mtime_ns and record[1] == stat.st_size and record[2]:
                         continue
                     audio = AudioFile(path, easy=True)
                     tags = audio if audio is not None else {}
@@ -176,11 +186,18 @@ def scan_library():
                     album = tag_first(tags, ("album",), path.parent.name if path.parent != MUSIC else "Sin álbum")
                     genre = tag_first(tags, ("genre",), "Sin género")
                     track_no = safe_trackno(tag_first(tags, ("tracknumber",), "0"))
-                    db.execute("""INSERT INTO tracks(id,rel,title,artist,album,genre,duration,track_no,mtime_ns,size)
-                       VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+                    info = getattr(audio, "info", None)
+                    audio_format = path.suffix.lower().lstrip(".").upper()
+                    bitrate = int(getattr(info, "bitrate", 0) or 0)
+                    sample_rate = int(getattr(info, "sample_rate", 0) or 0)
+                    bit_depth = int(getattr(info, "bits_per_sample", 0) or 0)
+                    db.execute("""INSERT INTO tracks(id,rel,title,artist,album,genre,duration,track_no,mtime_ns,size,format,bitrate,sample_rate,bit_depth)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
                        title=excluded.title, artist=excluded.artist,album=excluded.album,genre=excluded.genre,
-                       duration=excluded.duration,track_no=excluded.track_no,mtime_ns=excluded.mtime_ns,size=excluded.size""",
-                       (ident, rel, title, artist, album, genre, duration, track_no, stat.st_mtime_ns, stat.st_size))
+                       duration=excluded.duration,track_no=excluded.track_no,mtime_ns=excluded.mtime_ns,size=excluded.size,
+                       format=excluded.format,bitrate=excluded.bitrate,sample_rate=excluded.sample_rate,bit_depth=excluded.bit_depth""",
+                       (ident, rel, title, artist, album, genre, duration, track_no, stat.st_mtime_ns, stat.st_size,
+                        audio_format, bitrate, sample_rate, bit_depth))
                     count += 1
                 except Exception as exc:
                     print(f"No se pudo indexar {path.name}: {exc}", flush=True)
@@ -235,7 +252,7 @@ def library(q: str = "", view: str = "all", limit: int = Query(500, ge=1, le=500
         raise HTTPException(400, "Vista desconocida")
     order = "h.played_at DESC" if view == "recent" else "t.artist COLLATE NOCASE, t.album COLLATE NOCASE, t.track_no, t.title COLLATE NOCASE"
     with db_conn() as db:
-        items = db.execute(f"""SELECT t.id,t.title,t.artist,t.album,t.genre,t.duration,t.rel,
+        items = db.execute(f"""SELECT t.id,t.title,t.artist,t.album,t.genre,t.duration,t.rel,t.format,t.bitrate,t.sample_rate,t.bit_depth,
                  f.track_id IS NOT NULL AS favorite FROM tracks t
                  LEFT JOIN favorites f ON f.track_id=t.id
                  LEFT JOIN history h ON h.track_id=t.id
@@ -521,6 +538,45 @@ async def stream(track_id: str, profile: str = "original", start: float = Query(
     return StreamingResponse(encoded(), media_type=mime, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
+def cast_stream_signature(track_id: str, expires: int) -> str:
+    message = f"{track_id}:{expires}:flac".encode()
+    return hmac.new(CAST_STREAM_SECRET, message, hashlib.sha256).hexdigest()
+
+
+@app.get("/api/cast-stream/{track_id}")
+async def cast_stream(track_id: str, expires: int, signature: str):
+    now = int(time.time())
+    if expires < now or expires > now + 3600:
+        raise HTTPException(403, "Cast stream link expired")
+    if not hmac.compare_digest(signature, cast_stream_signature(track_id, expires)):
+        raise HTTPException(403, "Invalid Cast stream link")
+    _track, path = track_lookup(track_id)
+    if path.suffix.lower() == ".flac":
+        return FileResponse(path, media_type="audio/flac", headers={"Cache-Control": "no-store"})
+    mime, codec, bitrate, fmt, more = PROFILES["flac"]
+    args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-i", str(path), "-map", "0:a:0", "-vn", "-c:a", codec, "-f", fmt, "pipe:1"]
+
+    async def encoded():
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
+        try:
+            while True:
+                chunk = await asyncio.to_thread(proc.stdout.read, 65536)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+            try:
+                await asyncio.to_thread(proc.wait, timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                await asyncio.to_thread(proc.wait)
+            proc.stdout.close()
+
+    return StreamingResponse(encoded(), media_type=mime, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+
 class TrackAction(BaseModel):
     id: str
 
@@ -580,7 +636,7 @@ def remove_playlist(playlist_id: int):
 @app.get("/api/playlists/{playlist_id}")
 def playlist_tracks(playlist_id: int):
     with db_conn() as db:
-        items = db.execute("""SELECT t.id,t.title,t.artist,t.album,t.genre,t.duration,t.rel, f.track_id IS NOT NULL AS favorite
+        items = db.execute("""SELECT t.id,t.title,t.artist,t.album,t.genre,t.duration,t.rel,t.format,t.bitrate,t.sample_rate,t.bit_depth, f.track_id IS NOT NULL AS favorite
               FROM playlist_tracks p JOIN tracks t ON t.id=p.track_id
               LEFT JOIN favorites f ON f.track_id=t.id
               WHERE p.playlist_id=? ORDER BY p.ordinal""", (playlist_id,)).fetchall()
@@ -639,6 +695,210 @@ async def cast_status():
     return await own_request("GET", "/api/player")
 
 
+cast_lock = asyncio.Lock()
+cast_devices: dict[str, object] = {}
+cast_browser = None
+cast_cache_time = 0.0
+cast_selected_uuid: str | None = None
+
+
+def discover_direct_casts():
+    global cast_devices, cast_browser, cast_cache_time
+    if cast_devices and time.monotonic() - cast_cache_time < 20:
+        return [{"id": key, "name": device.name or "Chromecast", "model": device.model_name or ""}
+                for key, device in cast_devices.items()]
+    try:
+        import pychromecast
+    except ImportError as exc:
+        raise HTTPException(503, "Chromecast directo no está disponible; actualizá la imagen de Aurora") from exc
+    devices, browser = pychromecast.get_chromecasts(tries=1, timeout=5)
+    previous_browser = cast_browser
+    cast_browser = browser
+    cast_devices = {str(device.uuid): device for device in devices}
+    cast_cache_time = time.monotonic()
+    if previous_browser is not None:
+        previous_browser.stop_discovery()
+    return [{"id": key, "name": device.name or "Chromecast", "model": device.model_name or ""}
+            for key, device in cast_devices.items()]
+
+
+async def direct_cast_by_uuid(device_uuid: str):
+    async with cast_lock:
+        devices = await run_in_threadpool(discover_direct_casts)
+        device = cast_devices.get(device_uuid)
+        if device is None:
+            raise HTTPException(404, "Chromecast no encontrado. Actualizá la lista de dispositivos.")
+        return device
+
+
+@app.get("/api/chromecast/outputs")
+async def chromecast_outputs():
+    items = await run_in_threadpool(discover_direct_casts)
+    return {"outputs": items, "selected": cast_selected_uuid}
+
+
+class ChromecastSelect(BaseModel):
+    uuid: str = Field(min_length=1, max_length=64)
+
+
+@app.post("/api/chromecast/select")
+async def chromecast_select(payload: ChromecastSelect):
+    global cast_selected_uuid
+    await direct_cast_by_uuid(payload.uuid)
+    cast_selected_uuid = payload.uuid
+    return {"ok": True, "uuid": payload.uuid}
+
+
+@app.post("/api/chromecast/play/{track_id}")
+async def chromecast_play(track_id: str, request: Request):
+    track, _path = track_lookup(track_id)
+    if not cast_selected_uuid:
+        raise HTTPException(400, "Elegí un Chromecast primero")
+    device = await direct_cast_by_uuid(cast_selected_uuid)
+    expires = int(time.time()) + 900
+    signature = cast_stream_signature(track_id, expires)
+    base_url = CAST_STREAM_BASE_URL or str(request.base_url).rstrip("/")
+    media_url = f"{base_url}/api/cast-stream/{track_id}?expires={expires}&signature={signature}"
+    try:
+        await run_in_threadpool(device.wait, 10)
+        await run_in_threadpool(
+            device.media_controller.play_media,
+            media_url,
+            "audio/flac",
+            title=track["title"],
+            stream_type="BUFFERED",
+            metadata={"metadataType": 3, "title": track["title"], "artist": track["artist"], "albumName": track["album"]},
+        )
+        await run_in_threadpool(device.media_controller.block_until_active, 8)
+        if device.media_controller.status.player_state != "PLAYING":
+            raise HTTPException(415, "El Chromecast no confirmó FLAC; este modelo podría no admitirlo desde el receptor multimedia estándar.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Chromecast rechazó la reproducción FLAC: {exc}") from exc
+    return {"ok": True, "format": "FLAC", "note": "La reproducción queda a cargo del receptor Chromecast; la compatibilidad depende del modelo."}
+
+
+def radio_content_type(station: dict) -> str:
+    stream_url = urlsplit(station["url"])
+    path = stream_url.path.lower()
+    if path.endswith((".m3u8", ".m3u")):
+        return "application/x-mpegURL"
+    codec = station.get("codec", "").strip().lower().replace(" ", "")
+    return {
+        "mp3": "audio/mpeg",
+        "mpeg": "audio/mpeg",
+        "aac": "audio/aac",
+        "aac+": "audio/aac",
+        "aacplus": "audio/aac",
+        "ogg": "audio/ogg",
+        "opus": "audio/ogg",
+        "flac": "audio/flac",
+        "wav": "audio/wav",
+        "wma": "audio/x-ms-wma",
+    }.get(codec, "audio/mpeg")
+
+
+async def radio_station_by_uuid(station_uuid: str) -> dict:
+    normalized_uuid = station_uuid.strip().lower()
+    if not re.fullmatch(r"[a-f0-9-]{32,36}", normalized_uuid):
+        raise HTTPException(422, "Identificador de emisora inválido")
+    try:
+        rows = await radio_browser(f"/json/stations/byuuid/{normalized_uuid}", ttl=1800)
+    except HTTPException:
+        rows = []
+    for row in rows:
+        station = normalized_station(row)
+        if station and station["stationuuid"] == normalized_uuid:
+            return station
+    with db_conn() as db:
+        row = db.execute("SELECT * FROM radio_favorites WHERE stationuuid=?", (normalized_uuid,)).fetchone()
+    station = normalized_station(dict(row)) if row else None
+    if station:
+        return station
+    raise HTTPException(404, "No se encontró la emisora en Radio Browser ni en tus favoritas")
+
+
+@app.post("/api/chromecast/radio/{station_uuid}")
+async def chromecast_radio(station_uuid: str):
+    station = await radio_station_by_uuid(station_uuid)
+    if not cast_selected_uuid:
+        raise HTTPException(400, "Elegí un Chromecast directo en Dispositivos")
+    device = await direct_cast_by_uuid(cast_selected_uuid)
+    try:
+        await run_in_threadpool(device.wait, 10)
+        await run_in_threadpool(
+            device.media_controller.play_media,
+            station["url"],
+            radio_content_type(station),
+            title=station["name"],
+            stream_type="LIVE",
+            metadata={"metadataType": 3, "title": station["name"], "subtitle": "Radio en vivo"},
+        )
+        await run_in_threadpool(device.media_controller.block_until_active, 10)
+        if device.media_controller.status.player_state != "PLAYING":
+            raise HTTPException(415, "El receptor Chromecast no pudo abrir esta transmisión. Probá otra emisora o la salida OwnTone.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Chromecast rechazó la transmisión de radio: {exc}") from exc
+    return {"ok": True, "name": station["name"], "content_type": radio_content_type(station)}
+
+
+@app.post("/api/cast/radio/{station_uuid}")
+async def cast_radio(station_uuid: str):
+    station = await radio_station_by_uuid(station_uuid)
+    outputs = await own_request("GET", "/api/outputs")
+    selected = [item for item in outputs.get("outputs", []) if item.get("selected")]
+    if not any(item.get("type") in {"AirPlay", "AirPlay 2", "Chromecast"} for item in selected):
+        raise HTTPException(400, "Seleccioná un parlante AirPlay o Chromecast en Dispositivos")
+    await own_request("POST", "/api/queue/items/add", params={
+        "uris": station["url"], "clear": "true", "playback": "start",
+    })
+    return {"ok": True, "name": station["name"], "output_count": len(selected)}
+
+
+@app.get("/api/radio/bitrate/{station_uuid}")
+async def radio_bitrate(station_uuid: str):
+    station = await radio_station_by_uuid(station_uuid)
+    byte_count = 0
+    started = time.monotonic()
+    try:
+        timeout = httpx.Timeout(4.0, connect=3.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False,
+                                     headers={"User-Agent": RADIO_UA, "Icy-MetaData": "0", "Accept-Encoding": "identity"}) as client:
+            async with client.stream("GET", station["url"]) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_raw():
+                    byte_count += len(chunk)
+                    elapsed = time.monotonic() - started
+                    if elapsed >= 2.5 or byte_count >= 512_000:
+                        break
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"No se pudo medir el flujo de la emisora: {str(exc)[:150]}") from exc
+    elapsed = max(time.monotonic() - started, 0.1)
+    if byte_count <= 0:
+        raise HTTPException(502, "La emisora no entregó datos durante la medición")
+    return {"stationuuid": station["stationuuid"], "bitrate_kbps": round(byte_count * 8 / elapsed / 1000, 1),
+            "sample_seconds": round(elapsed, 1), "bytes": byte_count, "measurement": "observed stream throughput"}
+
+
+@app.post("/api/chromecast/control/{action}")
+async def chromecast_control(action: str):
+    if action not in {"play", "pause", "stop"}:
+        raise HTTPException(400, "Control no permitido")
+    if not cast_selected_uuid:
+        raise HTTPException(400, "Elegí un Chromecast primero")
+    device = await direct_cast_by_uuid(cast_selected_uuid)
+    method = {"play": device.media_controller.play, "pause": device.media_controller.pause,
+              "stop": device.media_controller.stop}[action]
+    try:
+        await run_in_threadpool(method)
+    except Exception as exc:
+        raise HTTPException(502, f"No se pudo controlar el Chromecast: {exc}") from exc
+    return {"ok": True}
+
+
 @app.post("/api/cast/play/{track_id}")
 async def cast_play(track_id: str):
     track, _path = track_lookup(track_id)
@@ -667,7 +927,7 @@ async def cast_control(action: str):
 # browsers request public streams directly and the application only stores metadata.
 RADIO_SERVERS = ("https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info")
 RADIO_ENABLED = os.getenv("RADIO_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
-RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3 (self-hosted radio directory)")
+RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3.1 (self-hosted radio directory)")
 _radio_cache: dict[str, tuple[float, list]] = {}
 
 

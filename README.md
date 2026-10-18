@@ -2,7 +2,7 @@
 
 Self-hosted music server for Raspberry Pi 5 with a web player, experimental Android client, online radio, Chromecast/AirPlay output and on-demand transcoding. Servidor de música autoalojado para Raspberry Pi 5 con reproductor web, cliente Android experimental, radios online, Chromecast/AirPlay y conversión bajo demanda.
 
-Versión experimental 0.3.0 (MVP) original, inspirada en la navegación de SimpMusic y en dos lenguajes visuales: **Liquid Glass** (inspiración Apple Music) y **Material 3** (inspiración Google). No es una copia de sus diseños, marcas ni aplicaciones.
+Versión experimental 0.3.1 (hotfix), basada en el MVP original, inspirada en la navegación de SimpMusic y en dos lenguajes visuales: **Liquid Glass** (inspiración Apple Music) y **Material 3** (inspiración Google). No es una copia de sus diseños, marcas ni aplicaciones.
 
 ## Funciones incluidas
 
@@ -17,7 +17,7 @@ Versión experimental 0.3.0 (MVP) original, inspirada en la navegación de SimpM
 - Letras sincronizadas automáticas a través de **LRCLIB**, con caché y selección manual de otra versión; archivos `.lrc` / `.txt` locales tienen prioridad.
 - Conversión **al vuelo** mediante FFmpeg: MP3 128/192/320, M4A/AAC 128/256 (MP4 fragmentado), Ogg Vorbis 96/160/320, Opus 24, FLAC, y original sin conversión.
 - Perfiles con tasas **aproximadas a Spotify**. No incluyen el catálogo ni la codificación exacta de Spotify. Los originales **nunca** se reemplazan.
-- Compatibilidad con parlantes **AirPlay 1/2 y Chromecast** mediante OwnTone y su API. El receptor negocia su formato de salida; no necesariamente respeta la selección MP3/AAC del navegador.
+- AirPlay 1/2 and the standard OwnTone Chromecast route remain available. A separate **Direct Chromecast · FLAC** route sends a signed, short-lived FLAC stream URL to the Cast Default Media Receiver; device support varies by model. OwnTone's Chromecast mirroring route is Opus-only.
 - Docker Compose usando una imagen OwnTone compatible con ARM64.
 
 ## Requisitos
@@ -53,7 +53,7 @@ sudo docker compose logs -f --tail=100
 
 7. Desde otro dispositivo en **la misma red** abrí `http://IP_DE_LA_RPI:8787` e ingresá el usuario/contraseña del `.env`.
 8. Copiá canciones dentro de la carpeta `music/` o del NAS y usá el botón `⟳` para escanear. OwnTone puede tardar unos segundos más en indexarlas para reproducirlas en parlantes.
-9. Para AirPlay/Chromecast, hacé clic en `▣` (barra inferior), seleccioná el receptor y reproducí una canción. En caso de que se requiera PIN de AirPlay, completá el emparejamiento desde la interfaz OwnTone `http://IP_DE_LA_RPI:3689`.
+9. For AirPlay or standard Chromecast, select the OwnTone output. To try lossless Chromecast playback, select the separate **Chromecast directo · FLAC** entry and start a track. FLAC support varies by Cast model; Aurora checks whether the receiver enters playback, but Cast does not expose a reliable per-model maximum format list. If FLAC is rejected, use the OwnTone Chromecast output, which uses Opus. A converted FLAC stream is only lossless when the source itself is lossless.
 
 ### Portainer / Portainer
 
@@ -93,7 +93,7 @@ Las letras sincronizadas se resaltan según el tiempo de reproducción local en 
 | Spotify-like Normal/Alta/Muy alta | Ogg Vorbis 96/160/320 | Tasas equivalentes aproximadas, no streaming del catálogo Spotify. |
 | FLAC | FLAC | Solo sin pérdida si el origen ya lo es; no recupera información de MP3. |
 
-Los flujos transcodificados no incorporan seeking HTTP Range nativo: el reproductor vuelve a crear el flujo con desplazamiento cuando adelantás la canción. El navegador debe soportar el códec/contenedor; si no, usá MP3. El modo AirPlay y Chromecast se gestiona por OwnTone con compatibilidad propia del destino.
+Los flujos transcodificados no incorporan seeking HTTP Range nativo: el reproductor vuelve a crear el flujo con desplazamiento cuando adelantás la canción. El navegador debe soportar el códec/contenedor; si no, usá MP3. OwnTone sigue gestionando AirPlay y la ruta normal de Chromecast. La opción directa usa el receptor multimedia estándar de Google Cast y envía FLAC; el soporte cambia según modelo y no existe una consulta fiable para conocer de antemano el límite de códec de cada modelo.
 
 ## Qué incluye de SimpMusic y qué NO
 
@@ -152,7 +152,7 @@ node --check backend/static/app.js
 - `docker-compose.yml`: dos servicios con `network_mode: host` para descubrimiento por mDNS.
 - `music/`: carpeta opcional para música; no incluida en el ZIP.
 
-Versión **0.3.0 / MVP experimental**. API y pantalla probadas localmente; instalación real ARM64 y emparejamiento de receptores **pendientes de verificar en una Raspberry Pi 5**.
+Versión **0.3.1 / hotfix experimental**. API y pantalla probadas localmente; instalación real ARM64 y emparejamiento de receptores **pendientes de verificar en una Raspberry Pi 5**.
 
 ## Radios online por país
 
@@ -164,7 +164,7 @@ Versión **0.3.0 / MVP experimental**. API y pantalla probadas localmente; insta
 
 Directorio de emisoras: [Radio Browser](https://www.radio-browser.info/), API documentada en https://docs.radio-browser.info/. El proyecto no aloja las señales: el navegador solicita el flujo de audio directamente al servidor de cada radio. Algunas emisoras no funcionan o usan códecs incompatibles; pueden existir enlaces HTTP sin cifrar. Escuchar radios requiere Internet y datos móviles si estás fuera del Wi-Fi. `RADIO_ENABLED=false` deshabilita consultas al directorio. No se recomienda publicar el servidor sin HTTPS.
 
-**Limitación actual:** la reproducción de radio funciona en navegador/cliente Android, pero no se ha implementado todavía su envío a receptores Chromecast o AirPlay. AirPlay/Chromecast está previsto y parcialmente implementado para la **biblioteca local** mediante OwnTone.
+Las radios se pueden reproducir en el navegador o enviarse a los parlantes seleccionados en OwnTone y al Chromecast directo. El Chromecast recibe la URL pública de la emisora como transmisión en vivo; la compatibilidad depende del códec y el formato usados por cada estación. Aurora no retransmite ni almacena el audio.
 
 ## Aplicación Android
 
@@ -201,7 +201,7 @@ aurora-music/
 - Antes de publicar verificá que NO incluyas: `.env`, `data/`, `owntone-cache/`, `music/`, bases SQLite, datos de cuenta, grabaciones ni letras descargadas. `.gitignore` protege esos directorios en un `git add .` normal.
 - El repositorio original se publica como código fuente, no como una imagen Docker ya compilada ni como una distribución de música.
 - Los estilos visuales están **inspirados** en interfaces conocidas, sin marcas, iconos, assets ni código propios de Apple, Google, Spotify o SimpMusic.
-- Las funciones Chromecast/AirPlay están implementadas mediante OwnTone, pero **no han sido verificadas con hardware real en tu red**. Usá GitHub Issues para registrar problemas de compatibilidad.
+- Direct Chromecast FLAC playback and the existing OwnTone output route require hardware testing on the target receiver. Cast receivers do not provide a dependable codec-limit query, so Aurora offers FLAC as a compatibility-tested attempt; OwnTone Opus remains available as a fallback.
 - Para reportar errores o proponer cambios, consultá `CONTRIBUTING.md`.
 
 ### Crear el repositorio desde una PC con Git y GitHub CLI (opcional)
@@ -210,7 +210,7 @@ aurora-music/
 cd aurora-music
 git init
 git add .
-git commit -m "Aurora Music v0.3: Internet radio and Android client"
+git commit -m "Aurora Music v0.3.1: hotfix"
 # Requiere haber iniciado sesión: gh auth login
 gh repo create aurora-music --public --source=. --remote=origin --push
 ```
