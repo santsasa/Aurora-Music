@@ -11,6 +11,7 @@ import re
 import secrets
 import sqlite3
 import subprocess
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -56,13 +57,13 @@ PROFILES = {
 }
 LYRICS_API = "https://lrclib.net"
 LYRICS_ENABLED = os.getenv("LYRICS_ONLINE_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
-LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3.1 (+https://github.com/santsasa/Aurora-Music)")
+LYRICS_USER_AGENT = os.getenv("LYRICS_USER_AGENT", "AuroraMusic/0.3.2 (+https://github.com/santsasa/Aurora-Music)")
 LYRICS_TTL_SUCCESS = 90 * 86400
 LYRICS_TTL_MISS = 24 * 3600
 LYRICS_MAX_BODY = 250_000
 lyric_request_lock = asyncio.Lock()
 lyrics_cooldown_until = 0.0
-app = FastAPI(title="Aurora Music", version="0.3.1", docs_url=None, redoc_url=None)
+app = FastAPI(title="Aurora Music", version="0.3.2", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 
 
@@ -212,7 +213,6 @@ def scan_library():
 def startup():
     init_db()
     # OwnTone indexes independently. Our index is user-triggered and initially populated here.
-    import threading
     threading.Thread(target=scan_library, daemon=True).start()
 
 
@@ -696,30 +696,33 @@ async def cast_status():
 
 
 cast_lock = asyncio.Lock()
+cast_operation_lock = asyncio.Lock()
+cast_discovery_lock = threading.Lock()
 cast_devices: dict[str, object] = {}
 cast_browser = None
 cast_cache_time = 0.0
 cast_selected_uuid: str | None = None
 
 
-def discover_direct_casts():
+def discover_direct_casts(force_refresh: bool = False):
     global cast_devices, cast_browser, cast_cache_time
-    if cast_devices and time.monotonic() - cast_cache_time < 20:
+    with cast_discovery_lock:
+        if not force_refresh and cast_devices and time.monotonic() - cast_cache_time < 20:
+            return [{"id": key, "name": device.name or "Chromecast", "model": device.model_name or ""}
+                    for key, device in cast_devices.items()]
+        try:
+            import pychromecast
+        except ImportError as exc:
+            raise HTTPException(503, "Chromecast directo no está disponible; actualizá la imagen de Aurora") from exc
+        devices, browser = pychromecast.get_chromecasts(tries=1, timeout=5)
+        previous_browser = cast_browser
+        cast_browser = browser
+        cast_devices = {str(device.uuid): device for device in devices}
+        cast_cache_time = time.monotonic()
+        if previous_browser is not None:
+            previous_browser.stop_discovery()
         return [{"id": key, "name": device.name or "Chromecast", "model": device.model_name or ""}
                 for key, device in cast_devices.items()]
-    try:
-        import pychromecast
-    except ImportError as exc:
-        raise HTTPException(503, "Chromecast directo no está disponible; actualizá la imagen de Aurora") from exc
-    devices, browser = pychromecast.get_chromecasts(tries=1, timeout=5)
-    previous_browser = cast_browser
-    cast_browser = browser
-    cast_devices = {str(device.uuid): device for device in devices}
-    cast_cache_time = time.monotonic()
-    if previous_browser is not None:
-        previous_browser.stop_discovery()
-    return [{"id": key, "name": device.name or "Chromecast", "model": device.model_name or ""}
-            for key, device in cast_devices.items()]
 
 
 async def direct_cast_by_uuid(device_uuid: str):
@@ -728,7 +731,28 @@ async def direct_cast_by_uuid(device_uuid: str):
         device = cast_devices.get(device_uuid)
         if device is None:
             raise HTTPException(404, "Chromecast no encontrado. Actualizá la lista de dispositivos.")
+        socket_client = getattr(device, "socket_client", None)
+        if socket_client is not None and getattr(socket_client, "ident", None) is not None and not socket_client.is_alive():
+            await run_in_threadpool(discover_direct_casts, True)
+            device = cast_devices.get(device_uuid)
+            if device is None:
+                raise HTTPException(404, "Chromecast no encontrado. Actualizá la lista de dispositivos.")
         return device
+
+
+async def ready_direct_cast_by_uuid(device_uuid: str):
+    device = await direct_cast_by_uuid(device_uuid)
+    try:
+        await run_in_threadpool(device.wait, 10)
+    except RuntimeError as exc:
+        if "threads can only be started once" not in str(exc).lower():
+            raise
+        await run_in_threadpool(discover_direct_casts, True)
+        device = cast_devices.get(device_uuid)
+        if device is None:
+            raise HTTPException(404, "Chromecast no encontrado. Actualizá la lista de dispositivos.") from exc
+        await run_in_threadpool(device.wait, 10)
+    return device
 
 
 @app.get("/api/chromecast/outputs")
@@ -754,28 +778,28 @@ async def chromecast_play(track_id: str, request: Request):
     track, _path = track_lookup(track_id)
     if not cast_selected_uuid:
         raise HTTPException(400, "Elegí un Chromecast primero")
-    device = await direct_cast_by_uuid(cast_selected_uuid)
-    expires = int(time.time()) + 900
-    signature = cast_stream_signature(track_id, expires)
-    base_url = CAST_STREAM_BASE_URL or str(request.base_url).rstrip("/")
-    media_url = f"{base_url}/api/cast-stream/{track_id}?expires={expires}&signature={signature}"
-    try:
-        await run_in_threadpool(device.wait, 10)
-        await run_in_threadpool(
-            device.media_controller.play_media,
-            media_url,
-            "audio/flac",
-            title=track["title"],
-            stream_type="BUFFERED",
-            metadata={"metadataType": 3, "title": track["title"], "artist": track["artist"], "albumName": track["album"]},
-        )
-        await run_in_threadpool(device.media_controller.block_until_active, 8)
-        if device.media_controller.status.player_state != "PLAYING":
-            raise HTTPException(415, "El Chromecast no confirmó FLAC; este modelo podría no admitirlo desde el receptor multimedia estándar.")
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(502, f"Chromecast rechazó la reproducción FLAC: {exc}") from exc
+    async with cast_operation_lock:
+        device = await ready_direct_cast_by_uuid(cast_selected_uuid)
+        expires = int(time.time()) + 900
+        signature = cast_stream_signature(track_id, expires)
+        base_url = CAST_STREAM_BASE_URL or str(request.base_url).rstrip("/")
+        media_url = f"{base_url}/api/cast-stream/{track_id}?expires={expires}&signature={signature}"
+        try:
+            await run_in_threadpool(
+                device.media_controller.play_media,
+                media_url,
+                "audio/flac",
+                title=track["title"],
+                stream_type="BUFFERED",
+                metadata={"metadataType": 3, "title": track["title"], "artist": track["artist"], "albumName": track["album"]},
+            )
+            await run_in_threadpool(device.media_controller.block_until_active, 8)
+            if device.media_controller.status.player_state != "PLAYING":
+                raise HTTPException(415, "El Chromecast no confirmó FLAC; este modelo podría no admitirlo desde el receptor multimedia estándar.")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(502, f"Chromecast rechazó la reproducción FLAC: {exc}") from exc
     return {"ok": True, "format": "FLAC", "note": "La reproducción queda a cargo del receptor Chromecast; la compatibilidad depende del modelo."}
 
 
@@ -824,24 +848,24 @@ async def chromecast_radio(station_uuid: str):
     station = await radio_station_by_uuid(station_uuid)
     if not cast_selected_uuid:
         raise HTTPException(400, "Elegí un Chromecast directo en Dispositivos")
-    device = await direct_cast_by_uuid(cast_selected_uuid)
-    try:
-        await run_in_threadpool(device.wait, 10)
-        await run_in_threadpool(
-            device.media_controller.play_media,
-            station["url"],
-            radio_content_type(station),
-            title=station["name"],
-            stream_type="LIVE",
-            metadata={"metadataType": 3, "title": station["name"], "subtitle": "Radio en vivo"},
-        )
-        await run_in_threadpool(device.media_controller.block_until_active, 10)
-        if device.media_controller.status.player_state != "PLAYING":
-            raise HTTPException(415, "El receptor Chromecast no pudo abrir esta transmisión. Probá otra emisora o la salida OwnTone.")
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(502, f"Chromecast rechazó la transmisión de radio: {exc}") from exc
+    async with cast_operation_lock:
+        device = await ready_direct_cast_by_uuid(cast_selected_uuid)
+        try:
+            await run_in_threadpool(
+                device.media_controller.play_media,
+                station["url"],
+                radio_content_type(station),
+                title=station["name"],
+                stream_type="LIVE",
+                metadata={"metadataType": 3, "title": station["name"], "subtitle": "Radio en vivo"},
+            )
+            await run_in_threadpool(device.media_controller.block_until_active, 10)
+            if device.media_controller.status.player_state != "PLAYING":
+                raise HTTPException(415, "El receptor Chromecast no pudo abrir esta transmisión. Probá otra emisora o la salida OwnTone.")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(502, f"Chromecast rechazó la transmisión de radio: {exc}") from exc
     return {"ok": True, "name": station["name"], "content_type": radio_content_type(station)}
 
 
@@ -889,13 +913,14 @@ async def chromecast_control(action: str):
         raise HTTPException(400, "Control no permitido")
     if not cast_selected_uuid:
         raise HTTPException(400, "Elegí un Chromecast primero")
-    device = await direct_cast_by_uuid(cast_selected_uuid)
-    method = {"play": device.media_controller.play, "pause": device.media_controller.pause,
-              "stop": device.media_controller.stop}[action]
-    try:
-        await run_in_threadpool(method)
-    except Exception as exc:
-        raise HTTPException(502, f"No se pudo controlar el Chromecast: {exc}") from exc
+    async with cast_operation_lock:
+        device = await ready_direct_cast_by_uuid(cast_selected_uuid)
+        method = {"play": device.media_controller.play, "pause": device.media_controller.pause,
+                  "stop": device.media_controller.stop}[action]
+        try:
+            await run_in_threadpool(method)
+        except Exception as exc:
+            raise HTTPException(502, f"No se pudo controlar el Chromecast: {exc}") from exc
     return {"ok": True}
 
 
@@ -927,7 +952,7 @@ async def cast_control(action: str):
 # browsers request public streams directly and the application only stores metadata.
 RADIO_SERVERS = ("https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info")
 RADIO_ENABLED = os.getenv("RADIO_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
-RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3.1 (self-hosted radio directory)")
+RADIO_UA = os.getenv("RADIO_USER_AGENT", "AuroraMusic/0.3.2 (self-hosted radio directory)")
 _radio_cache: dict[str, tuple[float, list]] = {}
 
 
