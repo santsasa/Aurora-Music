@@ -11,7 +11,7 @@ services:
       APP_USER: ${APP_USER:?Set APP_USER in Portainer}
       APP_PASSWORD: ${APP_PASSWORD:-}
       APP_AUTH_ENABLED: ${APP_AUTH_ENABLED:-false}
-      APP_PORT: ${APP_PORT:-8787}
+      APP_PORT: ${APP_PORT:-8788}
       OWNTONE_URL: http://127.0.0.1:3689
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
       LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3 (+https://github.com/santsasa/Aurora-Music)}
