@@ -2,6 +2,20 @@
 
 All listed versions are **experimental**. Universal compatibility is not guaranteed until tested on real hardware.
 
+## [Unreleased]
+
+- Added the official Google Cast Web Sender SDK and a trusted local HTTPS entry point through Caddy for the Raspberry Pi LAN address.
+- Added persistent Caddy certificate storage and a LAN endpoint to download the local root certificate required by browsers that control Cast.
+- Added a signed, short-lived FLAC media URL for Google Cast while keeping the receiver stream on the Raspberry Pi's LAN HTTP address.
+- Added live receiver-state synchronization for active Cast sessions, including external media title, artist, album art, duration, playback position, and device volume.
+- Routed direct Chromecast track and radio playback, play/pause, stop, seek, and user-adjusted volume through the official Cast session when available; retained existing fallback routes when HTTPS or the SDK is unavailable.
+- Preserved the receiver's current volume when starting a Cast session; the volume slider only changes it after the user moves the control.
+- Added a quick audio-quality selector to the main and compact players, with the selected profile saved in the browser and applied to browser playback.
+- Added an explicit stop control and translations for the new quality and stop controls.
+- Updated the Portainer and Docker Compose stacks to start Caddy, persist its local CA, and use a LAN-reachable Cast media URL.
+- Added local HTTPS, certificate-trust, Cast, and LAN-only setup instructions to the README.
+- Refreshed frontend asset versions to ensure browsers load the Cast and quality-control updates.
+
 ## [0.3.2] — 2026-10-18 (Hotfix)
 
 - Recover direct Chromecast playback when a previous connection worker has stopped instead of trying to restart a finished thread.

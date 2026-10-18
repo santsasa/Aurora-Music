@@ -35,6 +35,10 @@ nav { display:grid; gap:4px; }.nav-btn { border:0; background:none; color:var(--
 .device-item.active { color:var(--accent); background:var(--surface-hover); }
 .speaker-icon { width:19px; height:19px; fill:currentColor; display:block; flex:0 0 auto; }
 .volume-icon { width:18px; height:18px; }
+.player-actions .quality-btn { width:30px; height:30px; border:1px solid var(--stroke); border-radius:9px; font-size:10px; font-weight:800; letter-spacing:-.4px; }
+.quality-picker-label { display:grid; gap:8px; color:var(--muted); font-size:12px; }
+.player-actions .quality-btn { width:30px; height:30px; border:1px solid var(--stroke); border-radius:9px; font-size:10px; font-weight:800; letter-spacing:-.4px; }
+.quality-picker-label { display:grid; gap:8px; color:var(--muted); font-size:12px; }
 
 /* Mobile layout refinements: keep every page and the fixed player inside the viewport. */
 @media(max-width:760px) {

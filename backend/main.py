@@ -39,6 +39,7 @@ USER = os.getenv("APP_USER", "admin")
 PASSWORD = os.getenv("APP_PASSWORD", "")
 AUTH_ENABLED = os.getenv("APP_AUTH_ENABLED", "true").strip().lower() in {"1", "yes", "true", "on"}
 CAST_STREAM_BASE_URL = os.getenv("CAST_STREAM_BASE_URL", "").rstrip("/")
+LAN_CA_PATH = Path(os.getenv("LAN_CA_PATH", "/tls-ca/caddy/pki/authorities/local/root.crt"))
 CAST_STREAM_SECRET = secrets.token_bytes(32)
 EXTENSIONS = {".mp3", ".flac", ".m4a", ".mp4", ".aac", ".ogg", ".opus", ".wav", ".aiff", ".aif", ".wma"}
 CONTENT_TYPES = {".mp3": "audio/mpeg", ".flac": "audio/flac", ".m4a": "audio/mp4", ".mp4": "audio/mp4", ".aac": "audio/aac", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav", ".aiff": "audio/aiff", ".aif": "audio/aiff"}
@@ -65,6 +66,18 @@ lyric_request_lock = asyncio.Lock()
 lyrics_cooldown_until = 0.0
 app = FastAPI(title="Aurora Music", version="0.3.2", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+
+
+@app.get("/api/security/lan-ca", include_in_schema=False)
+def download_lan_ca():
+    if not LAN_CA_PATH.is_file():
+        raise HTTPException(503, "The local HTTPS certificate authority is not ready yet")
+    return FileResponse(
+        LAN_CA_PATH,
+        media_type="application/x-x509-ca-cert",
+        filename="aurora-lan-root-ca.crt",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.middleware("http")
@@ -541,6 +554,22 @@ async def stream(track_id: str, profile: str = "original", start: float = Query(
 def cast_stream_signature(track_id: str, expires: int) -> str:
     message = f"{track_id}:{expires}:flac".encode()
     return hmac.new(CAST_STREAM_SECRET, message, hashlib.sha256).hexdigest()
+
+
+@app.get("/api/chromecast/media/{track_id}")
+async def chromecast_media(track_id: str, request: Request):
+    track, _path = track_lookup(track_id)
+    expires = int(time.time()) + 900
+    signature = cast_stream_signature(track_id, expires)
+    base_url = CAST_STREAM_BASE_URL or str(request.base_url).rstrip("/")
+    media_url = f"{base_url}/api/cast-stream/{track_id}?expires={expires}&signature={signature}"
+    return {
+        "url": media_url,
+        "content_type": "audio/flac",
+        "title": track["title"],
+        "artist": track["artist"],
+        "album": track["album"],
+    }
 
 
 @app.get("/api/cast-stream/{track_id}")

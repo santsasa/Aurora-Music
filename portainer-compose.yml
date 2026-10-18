@@ -12,8 +12,9 @@ services:
       APP_PASSWORD: ${APP_PASSWORD:-}
       APP_AUTH_ENABLED: ${APP_AUTH_ENABLED:-false}
       APP_PORT: ${APP_PORT:-8788}
+      LAN_CA_PATH: /tls-ca/caddy/pki/authorities/local/root.crt
       OWNTONE_URL: ${OWNTONE_URL:-http://127.0.0.1:3689}
-      CAST_STREAM_BASE_URL: ${CAST_STREAM_BASE_URL:-}
+      CAST_STREAM_BASE_URL: ${CAST_STREAM_BASE_URL:-http://192.168.1.121:8788}
       LYRICS_ONLINE_ENABLED: ${LYRICS_ONLINE_ENABLED:-true}
       LYRICS_USER_AGENT: ${LYRICS_USER_AGENT:-AuroraMusic/0.3.2 (+https://github.com/santsasa/Aurora-Music)}
       RADIO_ENABLED: ${RADIO_ENABLED:-true}
@@ -21,8 +22,22 @@ services:
     volumes:
       - aurora_music:/srv/media:ro
       - aurora_data:/app/data
+      - aurora_caddy_data:/tls-ca:ro
     depends_on:
       - owntone
+  aurora-https:
+    image: caddy:2-alpine
+    container_name: aurora-https
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      APP_PORT: ${APP_PORT:-8788}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - aurora_caddy_data:/data
+      - aurora_caddy_config:/config
+    depends_on:
+      - aurora
   owntone:
     build: ./owntone
     pull_policy: build
@@ -49,4 +64,6 @@ services:
 volumes:
   aurora_music:
   aurora_data:
+  aurora_caddy_data:
+  aurora_caddy_config:
   aurora_owntone_cache_v2:
